@@ -1,142 +1,187 @@
 #!/usr/bin/env bash
-# --------------------------------------------------------------------------------
-# Script  : menu.sh
-# Desc    : STESH incremental game 
-# Version : 0.0.2v
-# Autor   : ghostkill73 <github.com/ghostkill73>
+#------------------------------------------------------------
+# Autor   : Abner Benedito
+# github  : ghostkill73
+# Version : 0.0.3 (2024-06-13)
 # Date    : 2024/02/29
-# --------------------------------------------------------------------------------
-# License : Intellectual property does not exist.
-# Product free for changes, distribution and sale.
-# It is not necessary to ask the author for permission.
-# --------------------------------------------------------------------------------
+#------------------------------------------------------------
+# CONFIG
 
-# ==============================[CONFIG]============================
-infp="insufficient points."
-sep="# ------------------------------------------------------------"
+# verify
+[[ ! -e "$currentSave" ]] && {
+	mkdir "./saves/" 2>&-
+	printf '%s\n' "$originalSave" > $currentSave
+}
 
-# =============================[SOURCES]============================
-source ./game/save.cfg
-source ./config/logo.cfg
+autoSave="1" # 1 == on
+currentSave="./saves/save.cfg"
 
-# ==============================[GAME]==============================
-while true; do
-clear
-    cat config/logo.cfg 2> /dev/null
-    echo "the bash incremental game"
-    echo
-    echo "Points: $points"
-    echo "[LEVEL $(awk "BEGIN { printf \"%.0f\", log($icm) / log(2) }")] Production speed: $(awk "BEGIN { printf \"%.10f\n\", $delay }")s"
-	echo "[1] Generate points +$(($prod + $prod2 + $prod3))"
-	echo "[2] Machine shop"
-	echo "[3] Decrease delay [$ $icm]"
-	echo "[EXIT] Save and quit"
-	echo "[RESET] Reset Game"
-	echo
-    read -p "> " option
+source "$currentSave"
 
-    case $option in
-        1)
-            points=$((points + prod))
-            points=$((points + prod2))
-            points=$((points + prod3))
-            sleep $delay
-            ;;
-        2)
-			while true; do
-			clear
-				echo "STESH - SHOP"
-				echo "Points: $points"
-				echo "[1] Improve production (TIER 1) [$ $tier1]"
-				echo "[2] Improve production (TIER 2) [$ $tier2]"
-				echo "[3] Improve production (TIER 3) [$ $tier3]"
-				echo "[4] Return to game" 
-				read -p "shop> " optionShop
-					case $optionShop in
-						1)
-							if [ $points -ge $tier1 ]; then
-               					points=$((points - $tier1))
-               					prod=$((prod + 1))
-               					tier1=$((tier1 + 2))
-      						else
-              					echo "$infp"
-               					sleep 1
-      						fi
-      						;;
-      					2)
-							if [ $points -ge $tier2 ]; then
-               					points=$((points - $tier2))
-               					prod2=$((prod2 + 10))
-               					tier2=$((tier2 + 25))
-      						else
-              					echo "$infp"
-               					sleep 1
-      						fi
-      						;;
-      					3)
-							if [ $points -ge $tier3 ]; then
-               					points=$((points - $tier3))
-               					prod3=$((prod3 + 100))
-               					tier3=$((tier3 + 250))
-      						else
-              					echo "$infp"
-               					sleep 1
-      						fi
-      						;;
-      					4)
-      						break
-      						;;
-      					*)
-      						;;
-      				esac
-			done
-            ;;
-        3)
-       		if [ $points -ge $icm ]; then
-       			points=$((points - icm))
-       			delay=$(awk "BEGIN { printf \"%.20f\", $delay / 1.2 }")
-       			icm=$((icm * 2))
-       		else
-                echo "$infp" 
-                sleep 1
-       		fi
-       		;;
-        EXIT)
-            echo "Exiting..."
-            echo "# If you don't want to break the game, don't edit" > ./game/save.cfg
-            echo "$sep" >> ./game/save.cfg
-            echo "points=$points" >> ./game/save.cfg
-            echo "$sep" >> ./game/save.cfg
-            echo "prod=$prod" >> ./game/save.cfg
-            echo "prod2=$prod2" >> ./game/save.cfg
-            echo "prod3=$prod3" >> ./game/save.cfg
-            echo "$sep" >> ./game/save.cfg
-            echo "delay=$delay" >> ./game/save.cfg
-            echo "icm=$icm" >> ./game/save.cfg
-            echo "$sep" >> ./game/save.cfg
-            echo "tier1=$tier1" >> ./game/save.cfg
-            echo "tier2=$tier2" >> ./game/save.cfg
-            echo "tier3=$tier3" >> ./game/save.cfg
-            echo "$sep" >> ./game/save.cfg
-            break
-            ;;
-        RESET)
-       		read -p "reset progress game?(y/n)> " resetD
-       			if [ "$resetD" = "y" ]; then
-       				cat "./config/originalsave.cfg" > "./game/save.cfg"
-       				sleep 3
-       				echo "game reset successfully!"
-       				exit 0
-       			elif [ "$resetD" = "n" ]; then
-       				echo "returning..."
-       				sleep 1
-       			else
-       				echo "error, please enter a valid option."
-       				sleep 2
-       				return
-       			fi
-       		;;
-        *)
-            ;;
-    esac
-done    
+originalSave='
+# If you dont want to break the game, dont edit
+#---------------------------------------------------------
+points=0 # points
+prod=1 # prod
+#---------------------------------------------------------
+delay=5 # delay in seconds
+icm=1 # delay boost price
+#---------------------------------------------------------
+# prices
+tier1=5
+tier2=2000
+tier3=10000
+#---------------------------------------------------------'
+
+
+#------------------------------------------------------------
+# FUNCTIONS
+
+clear() { printf '\e[2J\e[H'; }
+sleep() { read -rt "$1" <> <(:) || :; }
+infp() { printf '%s\n' "insufficient points"; sleep "1"; }
+
+saveGame() {
+printf '%s\n' "
+# If you dont want to break the game, dont edit
+#---------------------------------------------------------
+points="$points"
+prod="$prod"
+#---------------------------------------------------------
+delay="$delay"
+icm="$icm"
+#---------------------------------------------------------
+tier1="$tier1"
+tier2="$tier2"
+tier3="$tier3"
+#---------------------------------------------------------'
+" > ${currentSave}
+}
+
+showTitle() {
+printf '%s\n' '
+  /$$$$$$  /$$$$$$$$ /$$$$$$$$  /$$$$$$  /$$   /$$
+ /$$__  $$|__  $$__/| $$_____/ /$$__  $$| $$  | $$
+| $$  \__/   | $$   | $$      | $$  \__/| $$  | $$
+|  $$$$$$    | $$   | $$$$$   |  $$$$$$ | $$$$$$$$
+ \____  $$   | $$   | $$__/    \____  $$| $$__  $$
+ /$$  \ $$   | $$   | $$       /$$  \ $$| $$  | $$
+|  $$$$$$/   | $$   | $$$$$$$$|  $$$$$$/| $$  | $$
+ \______/    |__/   |________/ \______/ |__/  |__/'
+}
+
+saveAndExit() {
+read -p "Save and exit? (y/N) " exitConfirm
+
+case ${exitConfirm} in
+
+[yY]) saveGame; exit 0 ;;
+
+[nN]) continue ;;
+
+*) ;;
+
+esac # exitConfirm
+
+}
+
+#resetAndExit() { ;}
+
+gameMenu() {
+while :; do
+
+#---------------------------------------------------------
+delayLevel="$(awk "BEGIN { printf \"%.0f\", log($icm) / log(2) }")"
+productionSpeed="$(awk "BEGIN { printf \"%.10f\n\", $delay }")"
+generatePoints="$((prod))"
+[[ "$autoSave" = '1' ]] && saveGame # auto save
+#---------------------------------------------------------
+
+clear; showTitle
+printf '%s\n' "
+POINTS: ${points}
+
+[LEVEL ${delayLevel}] Production speed: ${productionSpeed}s
+[AnyKey] Generate points +${generatePoints}
+[1] Shop
+[2] Decrease delay [\$ ${icm}]
+[EXIT] Save and quit
+[RESET] Reset the save"
+
+read -p "> " mainOption
+
+case ${mainOption} in
+
+1)
+while :; do
+
+clear; showTitle
+printf '%s\n' "
+POINTS: ${points}
+
+[1] Improve TIER 1 [\$ ${tier1}]
+[2] Improve TIER 2 [\$ ${tier2}]
+[3] Improve TIER 3 [\$ ${tier3}]
+[R] Return"
+read -p "shop> " optionShop
+
+case ${optionShop} in
+	1)
+	if [[ "$points" -ge "$tier1" ]]; then
+		points="$((points - tier1))"
+		prod="$((prod + 1))"
+		tier1="$((tier1 + 10))"
+	else
+		infp
+	fi
+	;;
+
+	2)
+	if [[ "$points" -ge "$tier2" ]]; then
+		points="$((points - tier2))"
+		prod="$((prod + 10))"
+		tier2="$((tier2 + 100))"
+	else
+		infp
+	fi
+	;;
+
+	3)
+	if [[ "$points" -ge "$tier3" ]]; then
+		points="$((points - tier3))"
+		prod="$((prod + 100))"
+		tier3="$((tier3 + 1000))"
+	else
+		infp
+	fi
+	;;
+
+	[rR]) break ;;
+
+esac # esac optionShop
+
+done # while option 1
+;;
+
+2)
+if [[ $points -ge $icm ]]; then
+	points="$((points - icm))"
+	delay="$(awk "BEGIN { printf \"%.20f\", $delay / 1.2 }")"
+	icm="$((icm * 2))"
+else
+	infp
+fi
+;;
+
+exit|EXIT) saveAndExit ;;
+
+reset|RESET) : ;;
+
+*) points="$((points + prod))"; sleep "$delay" ;;
+
+esac # esac mainOption
+
+done # main
+}
+
+gameMenu
